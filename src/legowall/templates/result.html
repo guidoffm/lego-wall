@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}LEGO-Wandbild — {{ filename }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Vorschau — {{ filename }}</h2>
+  <img class="preview" src="{{ preview_uri }}" alt="Vorschau des Mosaiks">
+  <p class="hint" style="margin-bottom:0">Rote Linien markieren die Grenzen der Trägerplatten.</p>
+</div>
+
+<div class="card">
+  <h2>Zusammenfassung</h2>
+  <pre class="summary">{% for line in summary %}{{ line }}
+{% endfor %}</pre>
+</div>
+
+<div class="card">
+  <h2>Stückliste</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Code</th><th>Farbe</th><th>Hex</th><th>LEGO</th><th>BrickLink</th>
+            <th class="num">Anzahl</th><th class="num">Anteil</th></tr>
+      </thead>
+      <tbody>
+        {% for line in plan.parts %}
+        <tr>
+          <td class="code" style="background:{{ line.color.hex }};color:{% if line.color.is_light %}#111{% else %}#fff{% endif %}">{{ line.code }}</td>
+          <td>{{ line.color.label }}</td>
+          <td class="mono">{{ line.color.hex }}</td>
+          <td class="mono">{{ line.color.lego_id if line.color.lego_id is not none else '—' }}</td>
+          <td class="mono">{{ line.color.bricklink_id if line.color.bricklink_id is not none else '—' }}</td>
+          <td class="num">{{ line.count }}</td>
+          <td class="num">{{ '%.1f' % (line.share * 100) }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr><th colspan="5">Summe ({{ plan.element_info.label }}, Teil {{ plan.element_info.part }})</th>
+            <th class="num">{{ plan.total_studs }}</th><th class="num">100,0%</th></tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Downloads</h2>
+  <ul class="downloads">
+    <li><a href="/download/{{ token }}/wandbild.zip"><strong>Alles als ZIP</strong></a></li>
+    {% for name in downloads %}
+    <li><a href="/download/{{ token }}/{{ name }}">{{ name }}</a></li>
+    {% endfor %}
+  </ul>
+  <p class="hint">Die Dateien liegen nur im Speicher und werden nach einigen weiteren
+    Durchläufen verworfen — bei Bedarf gleich herunterladen.
+    Die <code>bricklink-wanted-list.xml</code> lässt sich bei BrickLink unter
+    „Wanted List → Upload“ direkt einlesen.</p>
+</div>
+
+<p><a href="/">← Neues Bild umrechnen</a></p>
+{% endblock %}

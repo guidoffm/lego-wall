@@ -1,0 +1,24 @@
+{
+  "id": "art-16",
+  "name": "Portrait-Palette (16 Farben)",
+  "description": "Kuratierte 16-Farb-Palette im Stil der LEGO-Art-Wandbilder, gut für Portraits und Motive mit Hauttönen.",
+  "source": "Eigene Auswahl aus pab-full; kein offizieller Set-Inhalt.",
+  "colors": [
+    { "name": "White", "name_de": "Weiß", "hex": "#FFFFFF", "lego_id": 1, "bricklink_id": 1 },
+    { "name": "Very Light Bluish Gray", "name_de": "Sehr helles Blaugrau", "hex": "#E6E3E0", "lego_id": 103, "bricklink_id": 99 },
+    { "name": "Light Bluish Gray", "name_de": "Helles Blaugrau", "hex": "#A0A5A9", "lego_id": 194, "bricklink_id": 86 },
+    { "name": "Dark Bluish Gray", "name_de": "Dunkles Blaugrau", "hex": "#6C6E68", "lego_id": 199, "bricklink_id": 85 },
+    { "name": "Black", "name_de": "Schwarz", "hex": "#05131D", "lego_id": 26, "bricklink_id": 11 },
+    { "name": "Light Nougat", "name_de": "Helles Nougat", "hex": "#F6D7B3", "lego_id": 283, "bricklink_id": 90 },
+    { "name": "Nougat", "name_de": "Nougat", "hex": "#D09168", "lego_id": 18, "bricklink_id": 28 },
+    { "name": "Medium Nougat", "name_de": "Mittleres Nougat", "hex": "#AA7D55", "lego_id": 312, "bricklink_id": 150 },
+    { "name": "Reddish Brown", "name_de": "Rotbraun", "hex": "#582A12", "lego_id": 192, "bricklink_id": 88 },
+    { "name": "Dark Brown", "name_de": "Dunkelbraun", "hex": "#352100", "lego_id": 308, "bricklink_id": 120 },
+    { "name": "Tan", "name_de": "Beige", "hex": "#E4CD9E", "lego_id": 5, "bricklink_id": 2 },
+    { "name": "Yellow", "name_de": "Gelb", "hex": "#F2CD37", "lego_id": 24, "bricklink_id": 3 },
+    { "name": "Orange", "name_de": "Orange", "hex": "#FE8A18", "lego_id": 106, "bricklink_id": 4 },
+    { "name": "Red", "name_de": "Rot", "hex": "#C91A09", "lego_id": 21, "bricklink_id": 5 },
+    { "name": "Dark Red", "name_de": "Dunkelrot", "hex": "#720E0F", "lego_id": 154, "bricklink_id": 59 },
+    { "name": "Dark Blue", "name_de": "Dunkelblau", "hex": "#0A3463", "lego_id": 140, "bricklink_id": 63 }
+  ]
+}

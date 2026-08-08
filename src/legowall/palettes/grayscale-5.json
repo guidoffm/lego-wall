@@ -1,0 +1,13 @@
+{
+  "id": "grayscale-5",
+  "name": "Graustufen (5 Farben)",
+  "description": "Die fünf neutralen LEGO-Graustufen — günstig zu beschaffen und sehr gut für Schwarz-Weiß-Motive.",
+  "source": "Eigene Auswahl aus pab-full.",
+  "colors": [
+    { "name": "White", "name_de": "Weiß", "hex": "#FFFFFF", "lego_id": 1, "bricklink_id": 1 },
+    { "name": "Very Light Bluish Gray", "name_de": "Sehr helles Blaugrau", "hex": "#E6E3E0", "lego_id": 103, "bricklink_id": 99 },
+    { "name": "Light Bluish Gray", "name_de": "Helles Blaugrau", "hex": "#A0A5A9", "lego_id": 194, "bricklink_id": 86 },
+    { "name": "Dark Bluish Gray", "name_de": "Dunkles Blaugrau", "hex": "#6C6E68", "lego_id": 199, "bricklink_id": 85 },
+    { "name": "Black", "name_de": "Schwarz", "hex": "#05131D", "lego_id": 26, "bricklink_id": 11 }
+  ]
+}

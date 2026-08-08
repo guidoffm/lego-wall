@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+<form action="/generate" method="post" enctype="multipart/form-data">
+  <div class="card">
+    <h2>1. Bild und Abmessungen</h2>
+    <div class="grid2">
+      <div>
+        <label for="image">Bilddatei <span class="hint">PNG oder JPG, max. {{ max_upload_mb }} MB</span></label>
+        <input id="image" name="image" type="file" accept="image/png,image/jpeg" required>
+      </div>
+      <div>
+        <label for="width">Breite in Studs <span class="hint">1–{{ max_edge }}</span></label>
+        <input id="width" name="width" type="number" min="1" max="{{ max_edge }}" value="48" required>
+      </div>
+      <div>
+        <label for="height">Höhe in Studs <span class="hint">leer = aus Seitenverhältnis</span></label>
+        <input id="height" name="height" type="number" min="1" max="{{ max_edge }}" value="48">
+      </div>
+      <div>
+        <label for="fit">Zuschnitt</label>
+        <select id="fit" name="fit">
+          <option value="cover" selected>Mittig beschneiden (füllt das Raster)</option>
+          <option value="contain">Vollständig einpassen (mit Rand)</option>
+          <option value="stretch">Verzerren</option>
+        </select>
+      </div>
+    </div>
+    <p class="check" style="margin-top:1rem">
+      <input id="keep_aspect" name="keep_aspect" type="checkbox" value="true">
+      <label for="keep_aspect" style="margin:0">Höhe aus dem Seitenverhältnis des Bildes berechnen</label>
+    </p>
+    <p class="hint" style="margin:0">Ein Stud entspricht 8 mm — 48 Studs sind 38,4 cm.
+      Maximal {{ max_total }} Studs pro Bild.</p>
+  </div>
+
+  <div class="card">
+    <h2>2. Farben</h2>
+    <div class="grid2">
+      <div>
+        <label for="palette_id">Palette</label>
+        <select id="palette_id" name="palette_id">
+          {% for palette in palettes %}
+          <option value="{{ palette.id }}" {% if palette.id == default_palette %}selected{% endif %}>
+            {{ palette.name }} — {{ palette | length }} Farben
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="max_colors">Farbanzahl begrenzen <span class="hint">optional</span></label>
+        <input id="max_colors" name="max_colors" type="number" min="1" max="64" placeholder="alle">
+      </div>
+      <div>
+        <label for="dither">Farbverläufe</label>
+        <select id="dither" name="dither">
+          <option value="floyd-steinberg" selected>Fehlerdiffusion (weiche Verläufe)</option>
+          <option value="none">Harte Farbflächen</option>
+        </select>
+      </div>
+      <div>
+        <label for="saturation">Sättigung <span class="hint">1.0 = unverändert</span></label>
+        <input id="saturation" name="saturation" type="number" step="0.05" min="0" max="3" value="1.0">
+      </div>
+      <div>
+        <label for="contrast">Kontrast</label>
+        <input id="contrast" name="contrast" type="number" step="0.05" min="0" max="3" value="1.0">
+      </div>
+      <div>
+        <label for="brightness">Helligkeit</label>
+        <input id="brightness" name="brightness" type="number" step="0.05" min="0" max="3" value="1.0">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3. Teile</h2>
+    <div class="grid2">
+      <div>
+        <label for="element">Element für die Fläche</label>
+        <select id="element" name="element">
+          {% for key, info in elements.items() %}
+          <option value="{{ key }}" {% if key == default_element %}selected{% endif %}>
+            {{ info.label }} — {{ info.part }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="panel_size">Trägerplatte <span class="hint">Kantenlänge in Studs</span></label>
+        <select id="panel_size" name="panel_size">
+          <option value="16" selected>16 x 16 (Teil 91405)</option>
+          <option value="32">32 x 32 (Teil 3867)</option>
+          <option value="48">48 x 48 (Teil 4186)</option>
+        </select>
+      </div>
+      <div>
+        <label for="stud_shape">Vorschau-Darstellung</label>
+        <select id="stud_shape" name="stud_shape">
+          <option value="round" selected>Runde Studs</option>
+          <option value="square">Eckige Felder</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <button type="submit">Mosaik berechnen</button>
+</form>
+{% endblock %}
