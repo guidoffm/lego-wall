@@ -13,11 +13,12 @@ Es gibt zwei Wege: eine **Web-Oberfläche** mit Datei-Upload und ein
 ```sh
 git clone git@github.com:guidoffm/lego-wall.git && cd lego-wall
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[web]"        # ohne [web] nur die CLI
+pip install -e ".[web]"        # [web] ergänzt uvicorn für `legowall serve`
 ```
 
-Abhängigkeiten: Pillow und numpy für den Kern, FastAPI/uvicorn/Jinja2 für die
-Web-Oberfläche.
+Pillow, numpy, FastAPI und Jinja2 sind Kern-Abhängigkeiten — die Web-App gehört
+zur Anwendung, nicht zu einem Extra. Im Extra `[web]` steckt nur uvicorn, also
+der lokale Server; gehostete Umgebungen bringen ihren eigenen ASGI-Server mit.
 
 ## Web-Oberfläche
 
