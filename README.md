@@ -48,8 +48,12 @@ docker build -t legowall .
 docker run --rm -p 8000:8000 legowall
 ```
 
-Auf Vercel (Python/FastAPI-Runtime) läuft dieselbe App ohne Anpassung; den
-Einstiegspunkt findet die Plattform über `[tool.vercel]` in `pyproject.toml`.
+Auf Vercel läuft dieselbe App unter <https://lego-wall.vercel.app>. Zwei Dinge
+sind dafür nötig und in `pyproject.toml` hinterlegt: der Einstiegspunkt unter
+`[tool.vercel]`, weil die Plattform die App unter `src/` sonst nicht findet, und
+FastAPI/Jinja2/python-multipart als **Kern**-Abhängigkeiten — Vercel installiert
+nur `[project.dependencies]` und wertet weder Extras noch `requirements.txt` aus.
+
 Der Docker-Build ist bislang nicht ausprobiert.
 
 ## Kommandozeile
