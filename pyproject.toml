@@ -37,3 +37,7 @@ legowall = ["palettes/*.json", "templates/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# Vercel erkennt die FastAPI-App sonst nicht, weil sie unter src/ liegt.
+[tool.vercel]
+entrypoint = "src.legowall.web:app"

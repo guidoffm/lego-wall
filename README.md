@@ -29,9 +29,16 @@ Bild hochladen, Breite (und optional Höhe) in Studs angeben, Palette wählen �
 die Ergebnisseite zeigt Vorschau und Stückliste und bietet alle Dateien als
 Download an, einzeln oder als ZIP.
 
-Die Ergebnisse liegen nur in einem kleinen LRU-Cache im Speicher (20 Einträge)
-und werden nie auf die Platte geschrieben. Uploads sind auf 25 MB begrenzt,
-das Raster auf 256 Studs je Kante und 40 000 Studs insgesamt.
+Die App ist zustandslos: ein Request rechnet das Mosaik und hängt alle Dateien
+als Data-URI in die Antwortseite mit — nichts wird zwischengespeichert oder auf die
+Platte geschrieben. Uploads sind auf 25 MB begrenzt, das Raster auf 256 Studs je
+Kante und 40 000 Studs insgesamt.
+
+Damit die Antwort klein bleibt, gilt ein Budget von 3 MB für die eingebetteten
+Dateien. Das ZIP steht vorn, weil es komprimiert alles enthält (auch bei
+200x200 Studs nur rund 270 KB). Was nicht mehr hineinpasst — bei großen Rastern
+die knapp 5 MB große `bauanleitung.html` — bleibt nur im ZIP, die Seite weist
+darauf hin.
 
 Im Container:
 
@@ -39,6 +46,10 @@ Im Container:
 docker build -t legowall .
 docker run --rm -p 8000:8000 legowall
 ```
+
+Auf Vercel (Python/FastAPI-Runtime) läuft dieselbe App ohne Anpassung; den
+Einstiegspunkt findet die Plattform über `[tool.vercel]` in `pyproject.toml`.
+Der Docker-Build ist bislang nicht ausprobiert.
 
 ## Kommandozeile
 

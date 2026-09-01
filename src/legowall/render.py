@@ -62,16 +62,25 @@ def render_preview(
     return image
 
 
+def bytes_to_data_uri(data: bytes, mime: str) -> str:
+    """Beliebige Nutzdaten als Data-URI — damit kommen Downloads ohne Serverzustand aus."""
+    encoded = base64.b64encode(data).decode("ascii")
+    return f"data:{mime};base64,{encoded}"
+
+
+def data_uri_size(data: bytes) -> int:
+    """Platz, den ``data`` als Base64 in der Seite belegt."""
+    return (len(data) + 2) // 3 * 4
+
+
 def image_to_data_uri(image: Image.Image, fmt: str = "PNG") -> str:
     buffer = io.BytesIO()
     image.save(buffer, format=fmt)
-    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
-    return f"data:image/{fmt.lower()};base64,{encoded}"
+    return bytes_to_data_uri(buffer.getvalue(), f"image/{fmt.lower()}")
 
 
 def text_to_data_uri(text: str, mime: str) -> str:
-    encoded = base64.b64encode(text.encode("utf-8")).decode("ascii")
-    return f"data:{mime};base64,{encoded}"
+    return bytes_to_data_uri(text.encode("utf-8"), mime)
 
 
 def _text_color(color) -> str:

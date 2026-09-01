@@ -1,3 +1,4 @@
+import base64
 import io
 import zipfile
 
@@ -55,37 +56,61 @@ def test_healthz(client):
     assert client.get("/healthz").json()["status"] == "ok"
 
 
+def _embedded(html, name):
+    """Den Inhalt eines eingebetteten Downloads aus der Ergebnisseite holen."""
+    marker = f'download="{name}"'
+    assert marker in html, f"{name} nicht in der Seite eingebettet"
+    before = html.rsplit(marker, 1)[0]
+    uri = before.rsplit('href="', 1)[1].rstrip('"\n ')
+    return base64.b64decode(uri.split(";base64,", 1)[1])
+
+
 def test_generate_returns_summary_and_downloads(client, upload):
     response = _post(client, upload)
     assert response.status_code == 200
     assert "32 x 32 Studs" in response.text
     assert "1024 Elemente" in response.text
     assert "data:image/png;base64," in response.text
-    assert "/download/" in response.text
-    assert "wandbild.zip" in response.text
+    assert 'download="wandbild.zip"' in response.text
 
 
-def test_downloads_are_served(client, upload):
-    response = _post(client, upload)
-    token = response.text.split("/download/")[1].split("/")[0]
+def test_downloads_are_embedded_in_the_page(client, upload):
+    html = _post(client, upload).text
 
-    csv_response = client.get(f"/download/{token}/stueckliste.csv")
-    assert csv_response.status_code == 200
-    assert csv_response.text.startswith("Code;")
-    assert "attachment" in csv_response.headers["content-disposition"]
+    assert _embedded(html, "stueckliste.csv").decode("utf-8").startswith("Code;")
+    assert b"<INVENTORY>" in _embedded(html, "bricklink-wanted-list.xml")
+    assert _embedded(html, "vorschau.png").startswith(b"\x89PNG")
 
-    xml_response = client.get(f"/download/{token}/bricklink-wanted-list.xml")
-    assert xml_response.status_code == 200
-    assert "<INVENTORY>" in xml_response.text
+    with zipfile.ZipFile(io.BytesIO(_embedded(html, "wandbild.zip"))) as archive:
+        assert set(archive.namelist()) == {
+            "bauanleitung.html",
+            "vorschau.png",
+            "mosaik.png",
+            "stueckliste.csv",
+            "stueckliste.json",
+            "bricklink-wanted-list.xml",
+        }
 
-    zip_response = client.get(f"/download/{token}/wandbild.zip")
-    with zipfile.ZipFile(io.BytesIO(zip_response.content)) as archive:
-        assert "bauanleitung.html" in archive.namelist()
-        assert "mosaik.png" in archive.namelist()
 
-
-def test_unknown_download_is_404(client):
+def test_no_server_state_between_requests(client, upload):
+    """Zwei Durchläufe dürfen sich nicht gegenseitig beeinflussen."""
+    first = _post(client, upload, palette_id="grayscale-5").text
+    second = _post(client, upload, palette_id="art-16").text
+    assert _embedded(first, "stueckliste.csv") != _embedded(second, "stueckliste.csv")
+    # Es gibt keine Route mehr, die auf zwischengespeicherte Ergebnisse zeigt.
+    assert "/download/" not in first
     assert client.get("/download/abc/stueckliste.csv").status_code == 404
+
+
+def test_large_grid_keeps_the_response_small(client, upload):
+    """Die Bauanleitung fliegt bei grossen Rastern raus, das ZIP bleibt drin."""
+    response = _post(client, upload, width="200", height="200")
+    assert response.status_code == 200
+    assert len(response.content) < 4_500_000
+    assert 'download="wandbild.zip"' in response.text
+    assert "nur im ZIP enthalten" in response.text
+    with zipfile.ZipFile(io.BytesIO(_embedded(response.text, "wandbild.zip"))) as archive:
+        assert "bauanleitung.html" in archive.namelist()
 
 
 def test_keep_aspect_derives_height(client, upload):

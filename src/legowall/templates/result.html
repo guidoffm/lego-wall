@@ -47,15 +47,23 @@
 <div class="card">
   <h2>Downloads</h2>
   <ul class="downloads">
-    <li><a href="/download/{{ token }}/wandbild.zip"><strong>Alles als ZIP</strong></a></li>
-    {% for name in downloads %}
-    <li><a href="/download/{{ token }}/{{ name }}">{{ name }}</a></li>
+    {% for item in downloads %}
+    <li>
+      <a href="{{ item.uri }}" download="{{ item.name }}"
+         {% if loop.first %}class="primary"{% endif %}>
+        {% if loop.first %}<strong>{{ item.label }}</strong>{% else %}{{ item.label }}{% endif %}
+        <span class="hint">{{ item.name }} · {{ item.size_kb }} KB</span>
+      </a>
+    </li>
     {% endfor %}
   </ul>
-  <p class="hint">Die Dateien liegen nur im Speicher und werden nach einigen weiteren
-    Durchläufen verworfen — bei Bedarf gleich herunterladen.
-    Die <code>bricklink-wanted-list.xml</code> lässt sich bei BrickLink unter
-    „Wanted List → Upload“ direkt einlesen.</p>
+  {% if skipped %}
+  <p class="hint">Zu groß zum Einbetten und deshalb nur im ZIP enthalten:
+    {% for item in skipped %}<code>{{ item.name }}</code>{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+  {% endif %}
+  <p class="hint">Die Dateien stecken direkt in dieser Seite — es wird nichts auf dem
+    Server gespeichert. Die <code>bricklink-wanted-list.xml</code> lässt sich bei
+    BrickLink unter „Wanted List → Upload“ direkt einlesen.</p>
 </div>
 
 <p><a href="/">← Neues Bild umrechnen</a></p>

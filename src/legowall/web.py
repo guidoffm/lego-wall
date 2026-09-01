@@ -1,20 +1,20 @@
 """Web-Oberfläche: Bild hochladen, Abmessungen angeben, Bauunterlagen herunterladen.
 
-Bewusst zustandsarm: die erzeugten Dateien liegen nur in einem kleinen
-LRU-Cache im Speicher und werden nie auf die Platte geschrieben.
+Vollständig zustandslos: ein Request rechnet das Mosaik und liefert alle
+Artefakte als Data-URIs in der Antwortseite mit. Nichts wird zwischengespeichert
+oder auf die Platte geschrieben — deshalb läuft die App unverändert hinter einem
+dauerhaften Prozess wie auch als Serverless-Function, wo jeder Folge-Request in
+einer anderen Instanz landen kann.
 """
 
 from __future__ import annotations
 
 import io
-import secrets
 import zipfile
-from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
-from threading import Lock
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 from PIL import Image, UnidentifiedImageError
@@ -31,13 +31,23 @@ from .parts import (
     parts_csv,
     parts_json,
 )
-from .render import image_to_data_uri, instructions_html, render_preview, summary_lines
+from .render import (
+    bytes_to_data_uri,
+    data_uri_size,
+    image_to_data_uri,
+    instructions_html,
+    render_preview,
+    summary_lines,
+)
 
 # Obergrenzen — schützen den Server vor übergroßen Uploads und Rastern.
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 MAX_STUDS_PER_EDGE = 256
 MAX_TOTAL_STUDS = 200 * 200
-CACHE_SIZE = 20
+
+# Budget für die eingebetteten Downloads. Serverless-Plattformen kappen
+# Antworten typischerweise bei 4,5 MB; darunter bleibt Luft für die Seite selbst.
+MAX_EMBEDDED_BYTES = 3 * 1024 * 1024
 
 ALLOWED_CONTENT_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
 
@@ -46,38 +56,43 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 app = FastAPI(title="LEGO-Wandbild-Generator", version=__version__)
 
 
-@dataclass
-class ResultBundle:
-    """Downloadbare Artefakte eines Durchlaufs."""
+@dataclass(frozen=True)
+class Download:
+    """Ein Artefakt, fertig zum Einbetten in die Ergebnisseite."""
 
-    files: dict[str, tuple[str, bytes]]
+    name: str
+    label: str
+    data: bytes
+    mime: str
 
+    @property
+    def uri(self) -> str:
+        return bytes_to_data_uri(self.data, self.mime)
 
-class _ResultCache:
-    """Kleiner threadsicherer LRU-Cache für die Download-Artefakte."""
-
-    def __init__(self, size: int = CACHE_SIZE) -> None:
-        self._size = size
-        self._items: OrderedDict[str, ResultBundle] = OrderedDict()
-        self._lock = Lock()
-
-    def put(self, bundle: ResultBundle) -> str:
-        token = secrets.token_urlsafe(16)
-        with self._lock:
-            self._items[token] = bundle
-            while len(self._items) > self._size:
-                self._items.popitem(last=False)
-        return token
-
-    def get(self, token: str) -> ResultBundle | None:
-        with self._lock:
-            bundle = self._items.get(token)
-            if bundle is not None:
-                self._items.move_to_end(token)
-            return bundle
+    @property
+    def size_kb(self) -> int:
+        return max(1, round(len(self.data) / 1024))
 
 
-_cache = _ResultCache()
+def _fit_into_budget(
+    candidates: list[Download], budget: int = MAX_EMBEDDED_BYTES
+) -> tuple[list[Download], list[Download]]:
+    """Artefakte der Reihe nach einbetten, solange das Budget reicht.
+
+    Die Liste ist nach Wichtigkeit sortiert; das ZIP steht vorn und enthält
+    ohnehin alles. Was nicht mehr passt — bei großen Rastern vor allem die
+    Bauanleitung — wird ausgelassen und in der Seite als „nur im ZIP" vermerkt.
+    """
+    embedded: list[Download] = []
+    skipped: list[Download] = []
+    for candidate in candidates:
+        needed = data_uri_size(candidate.data)
+        if needed <= budget:
+            embedded.append(candidate)
+            budget -= needed
+        else:
+            skipped.append(candidate)
+    return embedded, skipped
 
 
 def _form_context(request: Request, **extra) -> dict:
@@ -221,25 +236,51 @@ async def generate(
     mosaic_bytes = io.BytesIO()
     mosaic.to_image().save(mosaic_bytes, format="PNG")
 
-    files: dict[str, tuple[str, bytes]] = {
-        "vorschau.png": ("image/png", preview_bytes.getvalue()),
-        "mosaik.png": ("image/png", mosaic_bytes.getvalue()),
-        "stueckliste.csv": ("text/csv; charset=utf-8", parts_csv(plan).encode("utf-8")),
-        "stueckliste.json": ("application/json", parts_json(plan).encode("utf-8")),
-        "bricklink-wanted-list.xml": (
-            "application/xml",
-            bricklink_wanted_list_xml(plan).encode("utf-8"),
+    artifacts = [
+        Download(
+            "bauanleitung.html",
+            "Bauanleitung",
+            instructions.encode("utf-8"),
+            "text/html; charset=utf-8",
         ),
-        "bauanleitung.html": ("text/html; charset=utf-8", instructions.encode("utf-8")),
-    }
+        Download("vorschau.png", "Vorschau", preview_bytes.getvalue(), "image/png"),
+        Download(
+            "mosaik.png", "Mosaik (1 Pixel je Stud)", mosaic_bytes.getvalue(), "image/png"
+        ),
+        Download(
+            "stueckliste.csv",
+            "Stückliste (CSV)",
+            parts_csv(plan).encode("utf-8"),
+            "text/csv; charset=utf-8",
+        ),
+        Download(
+            "stueckliste.json",
+            "Stückliste (JSON)",
+            parts_json(plan).encode("utf-8"),
+            "application/json",
+        ),
+        Download(
+            "bricklink-wanted-list.xml",
+            "BrickLink Wanted List",
+            bricklink_wanted_list_xml(plan).encode("utf-8"),
+            "application/xml",
+        ),
+    ]
 
     archive = io.BytesIO()
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
-        for name, (_, data) in files.items():
-            zf.writestr(name, data)
-    files["wandbild.zip"] = ("application/zip", archive.getvalue())
+        for artifact in artifacts:
+            zf.writestr(artifact.name, artifact.data)
+    bundle = Download(
+        "wandbild.zip", "Alles als ZIP", archive.getvalue(), "application/zip"
+    )
 
-    token = _cache.put(ResultBundle(files=files))
+    # Das ZIP zuerst: es enthält ohnehin alles und ist komprimiert am kleinsten.
+    # Die Bauanleitung wandert ans Ende, weil sie bei großen Rastern mehrere
+    # Megabyte gross wird und sonst das ganze Budget aufbraucht.
+    embedded, skipped = _fit_into_budget(
+        [bundle, *artifacts[1:], artifacts[0]],
+    )
 
     return templates.TemplateResponse(
         request,
@@ -250,26 +291,9 @@ async def generate(
             "mosaic": mosaic,
             "summary": summary_lines(plan),
             "preview_uri": image_to_data_uri(preview),
-            "token": token,
-            "downloads": [name for name in files if name != "wandbild.zip"],
+            "downloads": embedded,
+            "skipped": skipped,
             "filename": image.filename or "Upload",
             "version": __version__,
         },
-    )
-
-
-@app.get("/download/{token}/{name}")
-def download(token: str, name: str) -> Response:
-    bundle = _cache.get(token)
-    if bundle is None or name not in bundle.files:
-        raise HTTPException(
-            status_code=404,
-            detail="Download nicht mehr verfügbar — bitte das Mosaik neu erzeugen.",
-        )
-    media_type, data = bundle.files[name]
-    disposition = "inline" if name == "bauanleitung.html" else "attachment"
-    return Response(
-        content=data,
-        media_type=media_type,
-        headers={"Content-Disposition": f'{disposition}; filename="{name}"'},
     )
